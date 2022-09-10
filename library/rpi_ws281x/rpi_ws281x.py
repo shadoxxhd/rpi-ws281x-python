@@ -102,6 +102,7 @@ class PixelStrip:
         self.getPixelColor = self.main_strip.getPixelColor
         self.getPixelColorRGB = self.main_strip.getPixelColorRGB
         self.getPixelColorRGBW = self.main_strip.getPixelColorRGBW
+        self.off = self.main_strip.off
 
         # Substitute for __del__, traps an exit condition and cleans up properly
         atexit.register(self._cleanup)
@@ -224,8 +225,14 @@ class PixelStrip:
 
         def setPixelColor(self, n, color):
             """Set LED at position n to the provided 24-bit color value (in RGB order).
+            If n is a slice then color can be a value which is repeated for all leds
+            or a slice of values which are applied to the leds.
             """
-            self.strip[self.first + n] = color
+            if isinstance(n, slice):
+                n = slice(n.start + self.first, n.stop + self.first, n.step)
+            else:
+                n = self.first + n
+            self.strip[n] = color
 
         def setPixelColorRGB(self, n, red, green, blue, white=0):
             """Set LED at position n to the provided red, green, and blue color.
@@ -267,6 +274,10 @@ class PixelStrip:
             return RGBW(self.strip[self.first + n])
 
         def show(self):
+            self.strip.show()
+
+        def off(self):
+            self.strip[self.first:self.last] = 0
             self.strip.show()
 
 # Shim for back-compatibility
