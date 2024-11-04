@@ -65,14 +65,6 @@ class PixelStrip:
         # Create ws2811_t structure and fill in parameters.
         self._leds = ws.new_ws2811_t()
 
-        # Initialize the channels to zero
-        for channum in range(2):
-            chan = ws.ws2811_channel_get(self._leds, channum)
-            ws.ws2811_channel_t_count_set(chan, 0)
-            ws.ws2811_channel_t_gpionum_set(chan, 0)
-            ws.ws2811_channel_t_invert_set(chan, 0)
-            ws.ws2811_channel_t_brightness_set(chan, 0)
-
         # Initialize the channel in use
         self._channel = ws.ws2811_channel_get(self._leds, channel)
 

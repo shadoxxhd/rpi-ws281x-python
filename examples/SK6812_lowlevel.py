@@ -45,14 +45,6 @@ DOT_COLORS = [0x200000,   # red
 # that you delete its memory by calling delete_ws2811_t when it's not needed.
 leds = ws.new_ws2811_t()
 
-# Initialize all channels to off
-for channum in range(2):
-    channel = ws.ws2811_channel_get(leds, channum)
-    ws.ws2811_channel_t_count_set(channel, 0)
-    ws.ws2811_channel_t_gpionum_set(channel, 0)
-    ws.ws2811_channel_t_invert_set(channel, 0)
-    ws.ws2811_channel_t_brightness_set(channel, 0)
-
 channel = ws.ws2811_channel_get(leds, LED_CHANNEL)
 
 ws.ws2811_channel_t_count_set(channel, LED_COUNT)
