@@ -1,3 +1,9 @@
+6.0.0
+-----
+
+* New: Pi 5 support!
+* New: Regenerated SWIG bindings with v4.1.0
+
 5.0.0
 -----
 

@@ -21,7 +21,7 @@ classifiers = ['Development Status :: 4 - Beta',
                'Topic :: System :: Hardware']
 
 setup(name              = 'rpi_ws281x',
-      version           = '5.0.0',
+      version           = '6.0.0',
       author            = 'Jeremy Garff <jer@jers.net>, Phil Howard <phil@pimoroni.com>',
       author_email      = 'jer@jers.net, phil@pimoroni.com',
       description       = 'Userspace Raspberry Pi PWM/PCM/SPI library for SK6812 and WS281X LEDs.',
