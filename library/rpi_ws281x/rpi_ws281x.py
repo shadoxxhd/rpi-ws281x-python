@@ -110,12 +110,13 @@ class PixelStrip:
         """
         # Handle if a slice of positions are passed in by setting the appropriate
         # LED data values to the provided value.
+        # Cast to int() as value may be a numpy non-int value.
         if isinstance(pos, slice):
             for n in range(*pos.indices(self.size)):
-                ws.ws2811_led_set(self._channel, n, value)
+                ws.ws2811_led_set(self._channel, n, int(value))
         # Else assume the passed in value is a number to the position.
         else:
-            return ws.ws2811_led_set(self._channel, pos, value)
+            return ws.ws2811_led_set(self._channel, pos, int(value))
 
     def __len__(self):
         return ws.ws2811_channel_t_count_get(self._channel)
