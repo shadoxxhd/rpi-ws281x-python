@@ -173,6 +173,29 @@ class PixelStrip:
             str_resp = ws.ws2811_get_return_t_str(resp)
             raise RuntimeError('ws2811_render failed with code {0} ({1})'.format(resp, str_resp))
 
+    def createPixelSubStrip(self, first, last=None, num=None):
+        """Create a PixelSubStrip starting with pixel `first`
+        Either specify the `num` of pixels or the `last` pixel.
+
+        All the methods of a PixelSubStrip are available on PixelStrip
+        objects.
+
+        Note: PixelSubStrips are not prevented from overlappping
+        """
+        if last:
+            if last > len(self):
+                raise self.InvalidStrip(f"Too many pixels ({last})."
+                                        f"Strip only has {len(self)}.")
+            return self.PixelSubStrip(self, first, last=last)
+        if num:
+            if first + num > len(self):
+                raise self.InvalidStrip(f"Too many pixels ({first + num})."
+                                        f"Strip only has {len(self)}.")
+            return self.PixelSubStrip(self, first, num=num)
+        raise self.InvalidStrip("Need num or last to create a PixelSubStrip")
+
+    class InvalidStrip(Exception):
+        pass
 
     class PixelSubStrip:
         """A PixelSubStrip handles a subset of the pixels in a PixelStrip
