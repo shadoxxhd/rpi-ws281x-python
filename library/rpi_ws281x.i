@@ -10,7 +10,6 @@
 %include "stdint.i"
 %include "carrays.i"
 
-//new
 %{
 #define SWIG_FILE_WITH_INIT
 %}
@@ -103,8 +102,8 @@ static int convert_iarray(PyObject *input, uint8_t *ptr, int size) {
         return &ws->channel[channelnum];
     }
 
-    void ws2811_get_array(ws2811_t *ws, int channelnum, unsigned int** arr, int* n){
-        *arr = ws->channel[channelnum].leds;
-        *n = ws->channel[channelnum].count;
+    void ws2811_array_get(ws2811_channel_t *channel, unsigned int **arr, int *n){
+        *arr = channel->leds;
+        *n = channel->count;
     }
 %}
