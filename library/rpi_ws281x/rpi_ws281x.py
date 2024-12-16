@@ -1,6 +1,8 @@
 # Adafruit NeoPixel library port to the rpi_ws281x library.
 # Author: Tony DiCola (tony@tonydicola.com), Jeremy Garff (jer@jers.net)
 import _rpi_ws281x as ws
+import numpy as np
+import sys
 import atexit
 
 
@@ -98,7 +100,7 @@ class PixelStrip:
         self.setPixelColorRGB = self.main_strip.setPixelColorRGB
         self.setBrightness = self.main_strip.setBrightness
         self.getBrightness = self.main_strip.getBrightness
-        self.getPixels = self.main_strip.getPixels
+        #self.getPixels = self.main_strip.getPixels # directly return the numpy view from PixelStrip.getPixels
         self.getPixelColor = self.main_strip.getPixelColor
         self.getPixelColorRGB = self.main_strip.getPixelColorRGB
         self.getPixelColorRGBW = self.main_strip.getPixelColorRGBW
@@ -111,13 +113,12 @@ class PixelStrip:
         """Return the 24-bit RGB color value at the provided position or slice
         of positions.
         """
-        # Handle if a slice of positions are passed in by grabbing all the values
-        # and returning them in a list.
-        if isinstance(pos, slice):
-            return [ws.ws2811_led_get(self._channel, n) for n in range(*pos.indices(self.size))]
-        # Else assume the passed in value is a number to the position.
-        else:
-            return ws.ws2811_led_get(self._channel, pos)
+        return self._values[pos]
+        # alternative, if returning numpy arrays is not desired:
+        #ret = self._values[pos]
+        #if type(ret) is np.ndarray:
+        #    return list(ret)
+        #return ret
 
     def __setitem__(self, pos, value):
         """Set the 24-bit RGB color value at the provided position or slice of
@@ -127,16 +128,7 @@ class PixelStrip:
         # Handle if a slice of positions are passed in by setting the appropriate
         # LED data values to the provided value.
         # Cast to int() as value may be a numpy non-int value.
-        if isinstance(pos, slice):
-            try:
-                for n, c in zip(range(*pos.indices(self.size)), value):
-                    ws.ws2811_led_set(self._channel, n, int(c))
-            except TypeError:
-                for n in range(*pos.indices(self.size)):
-                    ws.ws2811_led_set(self._channel, n, int(value))
-        # Else assume the passed in value is a number to the position.
-        else:
-            return ws.ws2811_led_set(self._channel, pos, int(value))
+        self._values[pos]=value
 
     def __len__(self):
         return ws.ws2811_channel_t_count_get(self._channel)
@@ -161,11 +153,15 @@ class PixelStrip:
         """Initialize library, must be called once before other functions are
         called.
         """
-
         resp = ws.ws2811_init(self._leds)
         if resp != 0:
             str_resp = ws.ws2811_get_return_t_str(resp)
             raise RuntimeError('ws2811_init failed with code {0} ({1})'.format(resp, str_resp))
+        # initialize array view
+        self._values = ws.ws2811_array_get(self._channel)
+        self._colors = self._values.view(dtype=np.uint8).reshape((-1,4)) # get view of individual color bytes
+        if self._values.dtype.byteorder == "<" or (self._values.dtype.byteorder == "=" and sys.byteorder == "little"):
+            self._colors = self._colors[:,::-1]
 
     def show(self):
         """Update the display with the data from the LED buffer."""
@@ -173,6 +169,12 @@ class PixelStrip:
         if resp != 0:
             str_resp = ws.ws2811_get_return_t_str(resp)
             raise RuntimeError('ws2811_render failed with code {0} ({1})'.format(resp, str_resp))
+
+    def getPixels(self):
+        return self._values
+
+    def getSubPixels(self):
+        return self._colors
 
     def createPixelSubStrip(self, first, last=None, num=None):
         """Create a PixelSubStrip starting with pixel `first`
