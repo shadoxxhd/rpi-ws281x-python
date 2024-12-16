@@ -49,24 +49,24 @@ class _PixelStripBase:
         """Return the 24-bit RGB color value at the provided position or slice
         of positions.
         """
-        return self._values[pos]
+        return self._view[pos]
 
     def __setitem__(self, pos, value):
         """Set the 24-bit RGB color value at the provided position or slice of
         positions. If value is a slice it is zip()'ed with pos to set as many
         leds as there are values.
         """
-        self._values[pos]=value
+        self._view[pos]=value
 
     def __len__(self):
-        return self._values.shape[0]
+        return self._view.shape[0]
 
     def setPixelColor(self, n, color):
         """Set LED at position n to the provided 24-bit color value (in RGB order).
         If n is a slice then color can be a value which is repeated for all leds
         or a slice of values which are applied to the leds.
         """
-        self._values[n] = color
+        self._view[n] = color
 
     def setPixelColorRGB(self, n, red, green, blue, white=0):
         """Set LED at position n to the provided red, green, and blue color.
@@ -90,7 +90,7 @@ class _PixelStripBase:
         """Return an object which allows access to the LED display data as if
         it were a sequence of 24-bit RGB values.
         """
-        return self._values
+        return self._view
 
     def getSubPixels(self):
         return self._colors
@@ -98,29 +98,29 @@ class _PixelStripBase:
     def numPixels(self):
         """Return the number of pixels in the strip."""
         return len(self)
-        # alternative: np.product(self._values.shape)
+        # alternative: np.product(self._view.shape)
         # would be identical unless called on a matrix substrip; in that case,
         # the latter would return the total number of pixels instead of the first dimension
 
     def getPixelColor(self, n):
         """Get the 24-bit RGB color value for the LED(s) at index n."""
-        return self._values[n]
+        return self._view[n]
 
     def getPixelColorRGB(self, n):
         # return single RGBW for int index or array of RGBW for slice/advanced indexing
-        return _int_to_RGBW(self._values[n])
+        return _int_to_RGBW(self._view[n])
         # alternative: it might be convenient for users if instead of returning arrays of RGBW for slices,
         # it returned an RGBW object representing the "color array" - allowing things
         # like arr.r[1:4] or arr[1:4].r instead of np.vectorize(lambda x:x.r)(arr[1:4])
 
     def getPixelColorRGBW(self, n):
-        return _int_to_RGBW(self._values[n])
+        return _int_to_RGBW(self._view[n])
 
     def show(self):
         self.strip.show()
 
     def off(self):
-        self._values[:] = 0
+        self._view[:] = 0
         self.strip.show()
 
 class PixelStrip(_PixelStripBase):
@@ -171,7 +171,7 @@ class PixelStrip(_PixelStripBase):
 
         # set numpy views to empty arrays; "index out of bounds" seems marginally more
         # helpful than "variable doesn't exist" when accessing methods before begin()
-        self._values = np.zeros((0))
+        self._view = np.zeros((0))
         self._colors = np.zeros((0,4))
         # alternative: set it to a "python-backed" numpy array of the correct size and copy over the content in begin()
         # this would have the advantage of __len__ being fully backwards compatible even in the edge case of accessing len(strip) before strip.begin()
@@ -203,10 +203,10 @@ class PixelStrip(_PixelStripBase):
             str_resp = ws.ws2811_get_return_t_str(resp)
             raise RuntimeError('ws2811_init failed with code {0} ({1})'.format(resp, str_resp))
         # initialize array view
-        self._values = ws.ws2811_array_get(self._channel)
+        self._view = ws.ws2811_array_get(self._channel)
         # get view of individual color bytes, respecting architecture dependant byteorder
-        self._colors = self._values.view(dtype=np.uint8).reshape((-1,4))
-        if self._values.dtype.byteorder == "<" or (self._values.dtype.byteorder == "=" and sys.byteorder == "little"):
+        self._colors = self._view.view(dtype=np.uint8).reshape((-1,4))
+        if self._view.dtype.byteorder == "<" or (self._view.dtype.byteorder == "=" and sys.byteorder == "little"):
             self._colors = self._colors[:,::-1]
 
     def show(self):
@@ -262,7 +262,7 @@ class PixelStrip(_PixelStripBase):
                     last = first + num
                 else:
                     last = len(strip)
-            self._values = strip._values[first:last]
+            self._view = strip._values[first:last]
             self._colors = strip._colors[first:last]
             # assuming no lasts means "until end of strip", similar to indexing (a[5:])
             # raise self.InvalidStrip("Must specify number or last pixel to "
