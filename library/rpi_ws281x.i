@@ -10,6 +10,14 @@
 %include "stdint.i"
 %include "carrays.i"
 
+%{
+#define SWIG_FILE_WITH_INIT
+%}
+%include "numpy.i"
+%init %{
+import_array();
+%}
+
 %typemap(out) uint8_t * {
   $result = PyList_New(256);
   int x;
@@ -64,6 +72,8 @@ static int convert_iarray(PyObject *input, uint8_t *ptr, int size) {
 // Process ws2811.h header and export all included functions.
 %include "lib/ws2811.h"
 
+%apply (unsigned int** ARGOUTVIEW_ARRAY1, int *DIM1) {(unsigned int** arr, int* n)};
+
 %inline %{
     uint32_t ws2811_led_get(ws2811_channel_t *channel, int lednum)
     {
@@ -90,5 +100,10 @@ static int convert_iarray(PyObject *input, uint8_t *ptr, int size) {
     ws2811_channel_t *ws2811_channel_get(ws2811_t *ws, int channelnum)
     {
         return &ws->channel[channelnum];
+    }
+
+    void ws2811_array_get(ws2811_channel_t *channel, unsigned int **arr, int *n){
+        *arr = channel->leds;
+        *n = channel->count;
     }
 %}
