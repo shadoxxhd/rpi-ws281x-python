@@ -301,10 +301,10 @@ class PixelStrip:
             return self[n]
 
         def getPixelColorRGB(self, n):
-            return RGBW(self[n])
+            return _int_to_RGBW(self[n])
 
         def getPixelColorRGBW(self, n):
-            return RGBW(self[n])
+            return _int_to_RGBW(self[n])
 
         def show(self):
             self.strip.show()
