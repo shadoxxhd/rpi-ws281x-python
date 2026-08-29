@@ -162,12 +162,14 @@ class PixelStrip:
         ws.ws2811_channel_t_brightness_set(self._channel, brightness)
 
     def getPixels(self):
-        """Return an object which allows access to the LED display data as if
-        it were a sequence of 24-bit RGB values.
+        """Return an object which allows access to the LED display data as a numpy array
+        of 24/32-bit color values in (W)RGB order.
         """
         return self._values # return a reference now; this *might* be a breaking change
 
     def getSubPixels(self):
+        """Return an 2D array which allows access to the (W)RGB color channels of all pixels.
+        """
         return self._colors
 
     def numPixels(self):
