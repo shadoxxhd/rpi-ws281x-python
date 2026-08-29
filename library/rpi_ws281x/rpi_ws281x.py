@@ -99,12 +99,11 @@ class PixelStrip:
         self.size = num
 
         # Create a PixelSubStrip and delegate these methods to it
-        self.main_strip = self.PixelSubStrip(self, 0, num=num)
+        self.main_strip = self.PixelSubStrip(self)
         self.setPixelColor = self.main_strip.setPixelColor
         self.setPixelColorRGB = self.main_strip.setPixelColorRGB
         self.setBrightness = self.main_strip.setBrightness
         self.getBrightness = self.main_strip.getBrightness
-        #self.getPixels = self.main_strip.getPixels # directly return the numpy view from PixelStrip.getPixels
         self.getPixelColor = self.main_strip.getPixelColor
         self.getPixelColorRGB = self.main_strip.getPixelColorRGB
         self.getPixelColorRGBW = self.main_strip.getPixelColorRGBW
@@ -180,7 +179,7 @@ class PixelStrip:
     def getSubPixels(self):
         return self._colors
 
-    def createPixelSubStrip(self, first, last=None, num=None):
+    def createPixelSubStrip(self, s=None, stop=None, step=None):
         """Create a PixelSubStrip starting with pixel `first`
         Either specify the `num` of pixels or the `last` pixel.
 
@@ -189,7 +188,14 @@ class PixelStrip:
 
         Note: PixelSubStrips are not prevented from overlappping
         """
-        return self.PixelSubStrip(self, first, last=last, num=num)
+        if isinstance(s,slice):
+            return self.PixelSubStrip(self, s)
+        elif stop is not None:
+            return self.PixelSubStrip(self, slice(s, stop, step))
+        else:
+            return self.PixelSubStrip(self, slice(s)) # s is interpreted as "stop", ie. last element in this case - this is a breaking change
+            # this ensures the same behavior as expected from slice() or range() (slice(5)==slice(0,5) != slice(5,None))
+            # to consistently use the first parameter as "start" instead, always use slice(s,stop,step)
 
 
     class PixelSubStrip:
@@ -202,70 +208,32 @@ class PixelStrip:
         strip2[5] will access the 15th pixel
         """
 
-        def __init__(self, strip, first, last=None, num=None):
+        def __init__(self, strip, s):
             self.strip = strip
-            if first < 0:
-                raise InvalidStrip(f"First pixel is negative ({first}).")
-            if first > len(strip):
-                raise InvalidStrip(f"First pixel is too big ({first})."
-                                   f"Strip only has {len(strip)}.")
-            self.first = first
-            if last:
-                if last < 0:
-                    raise InvalidStrip(f"Last pixel is negative ({last}).")
-                if last > len(strip):
-                    raise InvalidStrip(f"Too many pixels ({last})."
-                                       f"Strip only has {len(strip)}.")
-                self.last = last
-                self.num = last - first
-            elif num:
-                if num < 0:
-                    raise InvalidStrip(f"number of pixels is negative ({num}).")
-                if first + num > len(strip):
-                    raise InvalidStrip(f"Too many pixels (last would be {first + num})."
-                                       f"Strip only has {len(strip)}.")
-                self.last = first + num
-                self.num = num
-            else:
-                raise InvalidStrip("Must specify number or last pixel to "
-                                   "create a PixelSubStrip")
+            if not isinstance(s, slice):
+                raise InvalidStrip(f"invalid substrip specification - use createPixelSubStrip or pass a slice object")
+            try:
+                self._values = strip.getPixels()[s]
+                self._colors = strip.getSubPixels()[s]
+            except Exception as E:
+                raise InvalidStrip(f"invalid index: {E=}")
 
         def __len__(self):
-            return self.num
-
-        def _adjust_pos(self, pos):
-            # create an adjusted pos, either a slice or index
-            if isinstance(pos, slice):
-                if pos.start and pos.start < 0:
-                    apos_start = self.first + self.num + pos.start
-                else:
-                    apos_start = (0 if pos.start is None else pos.start) + self.first
-
-                if pos.stop and pos.stop < 0:
-                    apos_stop = pos.stop + self.last
-                else:
-                    apos_stop = (self.num if pos.stop is None else pos.stop) + self.first
-                apos = slice(apos_start,
-                             apos_stop,
-                             pos.step)
-                return apos
-            if pos < 0:
-                return self.num + pos + self.first
-            return pos + self.first
+            return len(self._values)
 
 
         def __getitem__(self, pos):
             """Return the 24-bit RGB color value at the provided position or slice
             of positions.
             """
-            return self.strip[self._adjust_pos(pos)]
+            return self._values[pos]
 
         def __setitem__(self, pos, value):
             """Set the 24-bit RGB color value at the provided position or slice of
             positions. If value is a slice it is zip()'ed with pos to set as many
             leds as there are values.
             """
-            self.strip[self._adjust_pos(pos)] = value
+            self._values[pos] = value
 
         def setPixelColor(self, n, color):
             """Set LED at position n to the provided 24-bit color value (in RGB order).
@@ -297,11 +265,11 @@ class PixelStrip:
             """Return an object which allows access to the LED display data as if
             it were a sequence of 24-bit RGB values.
             """
-            return self[:]
+            return self._values # breaking change - now returns a reference instead of a copy
 
         def numPixels(self):
             """Return the number of pixels in the strip."""
-            return self.num
+            return len(self._values)
 
         def getPixelColor(self, n):
             """Get the 24-bit RGB color value for the LED at position n."""
