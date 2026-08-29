@@ -35,6 +35,7 @@ class RGBW(int):
     def w(self):
         return (self >> 24) & 0xff
 
+_int_to_RGBW = np.frompyfunc(RGBW,1,1) # creates a ufunc that turns an array of integer colors into an array of RGBW objects
 
 def Color(red, green, blue, white=0):
     """Convert the provided red, green, blue color to a 24-bit color value.
@@ -110,6 +111,13 @@ class PixelStrip:
         self.getPixelColorRGBW = self.main_strip.getPixelColorRGBW
         self.off = self.main_strip.off
 
+        # set numpy views to empty arrays; "index out of bounds" seems marginally more
+        # helpful than "variable doesn't exist" when accessing methods before begin()
+        self._view = np.zeros((0))
+        self._colors = np.zeros((0,4))
+        # alternative: set it to a "python-backed" numpy array of the correct size and copy over the content in begin()
+        # this would have the advantage of __len__ being fully backwards compatible even in the edge case of accessing len(strip) before strip.begin()
+
         # Substitute for __del__, traps an exit condition and cleans up properly
         atexit.register(self._cleanup)
 
@@ -117,9 +125,9 @@ class PixelStrip:
         """Return the 24-bit RGB color value at the provided position or slice
         of positions.
         """
-        return self._values[pos]
+        return self._view[pos]
         # alternative, if returning numpy arrays is not desired:
-        #ret = self._values[pos]
+        #ret = self._view[pos]
         #if type(ret) is np.ndarray:
         #    return list(ret)
         #return ret
@@ -132,7 +140,7 @@ class PixelStrip:
         # Handle if a slice of positions are passed in by setting the appropriate
         # LED data values to the provided value.
         # Cast to int() as value may be a numpy non-int value.
-        self._values[pos]=value
+        self._view[pos]=value
 
     def __len__(self):
         return ws.ws2811_channel_t_count_get(self._channel)
@@ -162,9 +170,10 @@ class PixelStrip:
             str_resp = ws.ws2811_get_return_t_str(resp)
             raise RuntimeError('ws2811_init failed with code {0} ({1})'.format(resp, str_resp))
         # initialize array view
-        self._values = ws.ws2811_array_get(self._channel)
-        self._colors = self._values.view(dtype=np.uint8).reshape((-1,4)) # get view of individual color bytes
-        if self._values.dtype.byteorder == "<" or (self._values.dtype.byteorder == "=" and sys.byteorder == "little"):
+        self._view = ws.ws2811_array_get(self._channel)
+        # get view of individual color bytes, respecting architecture dependant byteorder
+        self._colors = self._view.view(dtype=np.uint8).reshape((-1,4))
+        if self._view.dtype.byteorder == "<" or (self._view.dtype.byteorder == "=" and sys.byteorder == "little"):
             self._colors = self._colors[:,::-1]
 
     def show(self):
@@ -175,7 +184,7 @@ class PixelStrip:
             raise RuntimeError('ws2811_render failed with code {0} ({1})'.format(resp, str_resp))
 
     def getPixels(self):
-        return self._values
+        return self._view
 
     def getSubPixels(self):
         return self._colors
@@ -229,43 +238,27 @@ class PixelStrip:
             else:
                 raise InvalidStrip("Must specify number or last pixel to "
                                    "create a PixelSubStrip")
+                # alternatively: take no given end as shorthand for "to end of strip"
+                # self.last = len(strip)
+                # self.num = self.last - first
+            self._view = strip.getPixels()[self.first:self.last]
+            self._colors = strip.getSubPixels()[self.first:self.last,:]
 
         def __len__(self):
             return self.num
-
-        def _adjust_pos(self, pos):
-            # create an adjusted pos, either a slice or index
-            if isinstance(pos, slice):
-                if pos.start and pos.start < 0:
-                    apos_start = self.first + self.num + pos.start
-                else:
-                    apos_start = (0 if pos.start is None else pos.start) + self.first
-
-                if pos.stop and pos.stop < 0:
-                    apos_stop = pos.stop + self.last
-                else:
-                    apos_stop = (self.num if pos.stop is None else pos.stop) + self.first
-                apos = slice(apos_start,
-                             apos_stop,
-                             pos.step)
-                return apos
-            if pos < 0:
-                return self.num + pos + self.first
-            return pos + self.first
-
 
         def __getitem__(self, pos):
             """Return the 24-bit RGB color value at the provided position or slice
             of positions.
             """
-            return self.strip[self._adjust_pos(pos)]
+            return self._view[pos]
 
         def __setitem__(self, pos, value):
             """Set the 24-bit RGB color value at the provided position or slice of
             positions. If value is a slice it is zip()'ed with pos to set as many
             leds as there are values.
             """
-            self.strip[self._adjust_pos(pos)] = value
+            self._view[pos] = value
 
         def setPixelColor(self, n, color):
             """Set LED at position n to the provided 24-bit color value (in RGB order).
@@ -297,7 +290,7 @@ class PixelStrip:
             """Return an object which allows access to the LED display data as if
             it were a sequence of 24-bit RGB values.
             """
-            return self[:]
+            return self._view # now a reference instead of a copy!
 
         def numPixels(self):
             """Return the number of pixels in the strip."""
