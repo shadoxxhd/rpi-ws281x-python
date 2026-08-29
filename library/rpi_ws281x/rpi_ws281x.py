@@ -178,11 +178,13 @@ class PixelStrip:
         """Get the 24-bit RGB color value for the LED at position n."""
         return self[n]
 
+    _int_to_RGBW = np.frompyfunc(RGBW,1,1) # creates a ufunc that turns an array of integer colors into an array of RGBW objects
+
     def getPixelColorRGB(self, n):
-        return RGBW(self[n])
+        return self._int_to_RGBW(self[n])
 
     def getPixelColorRGBW(self, n):
-        return RGBW(self[n])
+        return self._int_to_RGBW(self[n])
 
 # Shim for back-compatibility
 class Adafruit_NeoPixel(PixelStrip):
