@@ -35,6 +35,7 @@ class RGBW(int):
     def w(self):
         return (self >> 24) & 0xff
 
+_int_to_RGBW = np.frompyfunc(RGBW,1,1) # creates a ufunc that turns an array of integer colors into an array of RGBW objects
 
 def Color(red, green, blue, white=0):
     """Convert the provided red, green, blue color to a 24-bit color value.
@@ -276,10 +277,10 @@ class PixelStrip:
             return self[n]
 
         def getPixelColorRGB(self, n):
-            return RGBW(self[n])
+            return _int_to_RGBW(self[n])
 
         def getPixelColorRGBW(self, n):
-            return RGBW(self[n])
+            return _int_to_RGBW(self[n])
 
         def show(self):
             self.strip.show()
